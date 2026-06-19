@@ -1,57 +1,178 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
+import { QRCodeSVG } from "qrcode.react";
 export default function VerifyPage() {
   const [hash, setHash] = useState("");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
-  const handleVerify = async () => {
-    if (!hash.trim()) return;
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const h = params.get("hash");
+    if (h) { setHash(h); handleVerifyHash(h); }
+  }, []);
+  const handleVerifyHash = async (h) => {
+    if (!h.trim()) return;
     setLoading(true);
     try {
-      const res = await axios.get("http://localhost:8080/api/certificates/verify/" + hash.trim());
+      const res = await axios.get("http://localhost:8080/api/certificates/verify/" + h.trim());
       setResult(res.data);
-    } catch { setResult({ exists: false, valid: false }); }
+    } catch {
+      setResult({ exists: false, valid: false });
+    }
     setLoading(false);
   };
+  const handleVerify = () => handleVerifyHash(hash);
+  const verifyUrl = hash ? window.location.origin + "/verify?hash=" + hash : "";
   return (
-    <div className="page">
-      <div className="glass-card">
-        <p className="page-title">Verifier un certificat</p>
-        <p className="page-sub">Collez le hash pour confirmer l authenticite d un diplome</p>
-        <div className="form-group">
-          <label className="form-label">Hash du certificat</label>
-          <input className="form-input" placeholder="ex: f34c3f3c05c39..." value={hash}
-            onChange={e => setHash(e.target.value)} onKeyDown={e => e.key === "Enter" && handleVerify()} />
+    <div style={{position:"relative", zIndex:1, maxWidth:"1400px", margin:"2rem auto", padding:"0 1rem"}}>
+      <div style={{display:"grid", gridTemplateColumns:"360px 1fr", gap:"2rem", alignItems:"flex-start"}}>
+        {/* GAUCHE - Formulaire */}
+        <div className="glass-card" style={{margin:0, width:"100%"}}>
+          <p className="page-title">Verifier un certificat</p>
+          <p className="page-sub">Collez le hash pour confirmer l authenticite d un diplome</p>
+          <div className="form-group">
+            <label className="form-label">Hash du certificat</label>
+            <input className="form-input" placeholder="ex: f34c3f3c05c39..." value={hash}
+              onChange={e => setHash(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleVerify()} />
+          </div>
+          <button className="btn-primary" onClick={handleVerify} disabled={loading}>
+            {loading ? "Verification..." : "Verifier l authenticite"}
+          </button>
+          {/* CERTIFICAT INVALIDE / INTROUVABLE */}
+          {result && (!result.exists || !result.valid) && (
+            <div className="fade-in alert alert-error" style={{marginTop:"1.5rem", textAlign:"center", padding:"1.5rem"}}>
+              <p style={{color:"#fca5a5", fontWeight:"700", fontSize:"1rem", marginBottom:"0.4rem"}}>
+                Certificat invalide ou introuvable
+              </p>
+              <p style={{color:"#94a3b8", fontSize:"0.85rem"}}>
+                Aucun diplome correspondant a ce hash n a ete trouve sur la blockchain.
+              </p>
+            </div>
+          )}
         </div>
-        <button className="btn-primary" onClick={handleVerify} disabled={loading}>
-          {loading ? "Verification..." : "Verifier l authenticite"}
-        </button>
-        {result && result.exists && result.valid && (
-          <div className="alert alert-success fade-in">
-            <p className="alert-title">Certificat valide</p>
-            <div className="divider" style={{margin:"0.8rem 0"}}></div>
-            <p>Etudiant : <strong>{result.studentName}</strong></p>
-            <p>Diplome : {result.degree}</p>
-            <p>Institution : {result.institution}</p>
-            <p>Date : {new Date(result.issueDate).toLocaleDateString("fr-FR")}</p>
-            {result.txHash && (
-              <div style={{marginTop:"1rem"}}>
-                <p style={{fontSize:"0.8rem",color:"#94a3b8",marginBottom:"0.3rem"}}>Transaction Blockchain :</p>
-                <a href={"https://sepolia.etherscan.io/tx/" + result.txHash}
-                  target="_blank" rel="noopener noreferrer"
-                  style={{color:"#60a5fa",fontSize:"0.78rem",wordBreak:"break-all",textDecoration:"none"}}>
-                  Voir sur Etherscan
-                </a>
+        {/* DROITE - Certificat */}
+        <div style={{width:"100%", minWidth:0}}>
+          {!result && (
+            <div className="glass-card" style={{textAlign:"center", padding:"4rem 2rem", opacity:0.5}}>
+              <p style={{color:"#475569"}}>Le certificat apparaitra ici apres verification</p>
+            </div>
+          )}
+          {result && result.exists && result.valid && (
+            <div className="fade-in" style={{
+              background:"linear-gradient(135deg, #ffffff 0%, #f7f7f5 100%)",
+              border:"2px solid #c9a84c",
+              borderRadius:"16px",
+              padding:"1.6rem 2.4rem",
+              position:"relative",
+              overflow:"hidden",
+              display:"flex",
+              flexDirection:"column",
+              gap:"0.6rem"
+            }}>
+              {/* Coins decoratifs */}
+              <div style={{position:"absolute",top:0,left:0,width:"30px",height:"30px",borderTop:"3px solid #c9a84c",borderRight:"3px solid #c9a84c"}}></div>
+              <div style={{position:"absolute",top:0,right:0,width:"30px",height:"30px",borderTop:"3px solid #c9a84c",borderLeft:"3px solid #c9a84c"}}></div>
+              <div style={{position:"absolute",bottom:0,left:0,width:"30px",height:"30px",borderBottom:"3px solid #c9a84c",borderRight:"3px solid #c9a84c"}}></div>
+              <div style={{position:"absolute",bottom:0,right:0,width:"30px",height:"30px",borderBottom:"3px solid #c9a84c",borderLeft:"3px solid #c9a84c"}}></div>
+              {/* En-tete officiel avec logos */}
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:"1rem"}}>
+                <img src="/enicarthage-logo.png" alt="ENICarthage" style={{height:"70px",objectFit:"contain"}} />
+                <div style={{textAlign:"center",flex:1}}>
+                  <p style={{fontSize:"0.5rem",color:"#64748b",letterSpacing:"1px",lineHeight:1.3,margin:0}}>
+                    Ministere de l'Enseignement Superieur<br/>Et la Recherche Scientifique
+                  </p>
+                  <p style={{fontSize:"0.6rem",color:"#b8860b",fontWeight:"700",letterSpacing:"1px",margin:"0.15rem 0 0"}}>
+                    Universite de Carthage
+                  </p>
+                  <p style={{fontSize:"0.5rem",color:"#64748b",margin:0}}>
+                    Ecole Nationale d'Ingenieurs de Carthage
+                  </p>
+                </div>
+                <img src="/uc-logo.jpg" alt="Universite de Carthage" style={{height:"70px",objectFit:"contain"}} />
               </div>
-            )}
-          </div>
-        )}
-        {result && !result.exists && (
-          <div className="alert alert-error fade-in">
-            <p className="alert-title">Certificat introuvable</p>
-            <p>Ce hash ne correspond a aucun certificat enregistre.</p>
-          </div>
-        )}
+              {/* Badge valide */}
+              <div style={{textAlign:"center"}}>
+                <div style={{
+                  display:"inline-flex", alignItems:"center", gap:"0.5rem",
+                  background:"rgba(16,185,129,0.12)", border:"1px solid rgba(16,185,129,0.5)",
+                  borderRadius:"999px", padding:"0.35rem 1.2rem", marginBottom:"0.4rem"
+                }}>
+                  <span style={{color:"#059669", fontWeight:"700", fontSize:"0.85rem", letterSpacing:"1px"}}>
+                    CERTIFICAT VALIDE
+                  </span>
+                </div>
+              </div>
+              {/* Titre */}
+              <div style={{textAlign:"center"}}>
+                <p style={{fontSize:"0.65rem",color:"#b8860b",letterSpacing:"4px",textTransform:"uppercase",margin:0}}>
+                  Republique Tunisienne
+                </p>
+                <div style={{width:"50px",height:"1px",background:"linear-gradient(90deg,transparent,#c9a84c,transparent)",margin:"0.35rem auto"}}></div>
+                <p style={{fontSize:"1.8rem",fontWeight:"800",color:"#0a1628",letterSpacing:"3px",textTransform:"uppercase",margin:0}}>
+                  Certificat
+                </p>
+                <p style={{fontSize:"0.85rem",color:"#b8860b",letterSpacing:"2px",margin:0}}>de Diplome Officiel</p>
+              </div>
+              {/* Corps - deux colonnes */}
+              <div style={{flex:1, display:"grid", gridTemplateColumns:"1fr 170px", alignItems:"center", gap:"1.5rem", padding:"0.5rem 0"}}>
+                <div style={{textAlign:"center"}}>
+                  <p style={{color:"#64748b",fontSize:"0.85rem",marginBottom:"0.3rem"}}>Ce certificat atteste que</p>
+                  <p style={{
+                    fontSize:"2rem",fontWeight:"800",color:"#0a1628",
+                    borderBottom:"2px solid #c9a84c",display:"inline-block",
+                    paddingBottom:"0.2rem",marginBottom:"0.7rem",letterSpacing:"1px"
+                  }}>
+                    {result.studentName}
+                  </p>
+                  <p style={{color:"#64748b",fontSize:"0.85rem",marginBottom:"0.3rem"}}>a obtenu avec succes le diplome de</p>
+                  <p style={{fontSize:"1.25rem",fontWeight:"700",color:"#2563eb",marginBottom:"0.5rem"}}>{result.degree}</p>
+                  <p style={{color:"#64748b",fontSize:"0.85rem",marginBottom:"0.6rem"}}>
+                    delivre par <strong style={{color:"#1e293b"}}>{result.institution}</strong>
+                  </p>
+                  <div style={{
+                    display:"inline-block",background:"rgba(201,168,76,0.12)",
+                    border:"1px solid rgba(201,168,76,0.5)",borderRadius:"999px",
+                    padding:"0.25rem 1.2rem"
+                  }}>
+                    <p style={{color:"#b8860b",fontSize:"0.85rem",fontWeight:"600",margin:0}}>Mention : {result.mention}</p>
+                  </div>
+                </div>
+                <div style={{textAlign:"center"}}>
+                  <div style={{background:"white",padding:"8px",borderRadius:"8px",display:"inline-block",border:"1px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}}>
+                    <QRCodeSVG value={verifyUrl} size={110} />
+                  </div>
+                  <p style={{fontSize:"0.65rem",color:"#94a3b8",marginTop:"0.4rem",margin:0}}>Scanner pour verifier</p>
+                </div>
+              </div>
+              {/* Footer */}
+              <div style={{
+                borderTop:"1px solid rgba(201,168,76,0.4)",paddingTop:"0.7rem",
+                display:"flex",justifyContent:"space-between",alignItems:"center",
+                flexWrap:"wrap",gap:"0.5rem"
+              }}>
+                <p style={{
+                  fontFamily:"monospace",fontSize:"0.6rem",color:"#2563eb",
+                  wordBreak:"break-all",cursor:"pointer",margin:0
+                }} onClick={() => navigator.clipboard.writeText(result.certHash)}>
+                  Hash : {result.certHash} [Copier]
+                </p>
+                <div style={{display:"flex",gap:"1rem",alignItems:"center",flexShrink:0}}>
+                  <p style={{fontSize:"0.65rem",color:"#94a3b8",margin:0}}>
+                    Date : {new Date(result.issueDate).toLocaleDateString("fr-FR")}
+                  </p>
+                  {result.txHash && (
+                    <a href={"https://sepolia.etherscan.io/tx/" + result.txHash}
+                      target="_blank" rel="noopener noreferrer"
+                      style={{color:"#b8860b",fontSize:"0.65rem"}}>
+                      Verifier sur Etherscan &gt;&gt;
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

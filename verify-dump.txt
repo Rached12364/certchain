@@ -1,0 +1,155 @@
+﻿import { useState, useEffect } from "react";
+import axios from "axios";
+import { QRCodeSVG } from "qrcode.react";
+export default function VerifyPage() {
+  const [hash, setHash] = useState("");
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const h = params.get("hash");
+    if (h) { setHash(h); handleVerifyHash(h); }
+  }, []);
+  const handleVerifyHash = async (h) => {
+    if (!h.trim()) return;
+    setLoading(true);
+    try {
+      const res = await axios.get("http://localhost:8080/api/certificates/verify/" + h.trim());
+      setResult(res.data);
+    } catch { setResult({ exists: false, valid: false }); }
+    setLoading(false);
+  };
+  const handleVerify = () => handleVerifyHash(hash);
+  const verifyUrl = hash ? window.location.origin + "/verify?hash=" + hash : "";
+  return (
+    <div className="page" style={{maxWidth:"700px"}}>
+      <div className="glass-card">
+        <p className="page-title">Verifier un certificat</p>
+        <p className="page-sub">Collez le hash pour confirmer l authenticite d un diplome</p>
+        <div className="form-group">
+          <label className="form-label">Hash du certificat</label>
+          <input className="form-input" placeholder="ex: f34c3f3c05c39..." value={hash}
+            onChange={e => setHash(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleVerify()} />
+        </div>
+        <button className="btn-primary" onClick={handleVerify} disabled={loading}>
+          {loading ? "Verification..." : "Verifier l authenticite"}
+        </button>
+        {result && result.exists && result.valid && (
+          <div className="fade-in" style={{marginTop:"1.5rem"}}>
+            <div style={{
+              background:"linear-gradient(135deg, #0a1628 0%, #0f2347 50%, #0a1628 100%)",
+              border:"2px solid #c9a84c",
+              borderRadius:"16px",
+              padding:"2rem",
+              position:"relative",
+              overflow:"hidden"
+            }}>
+                              {/* En-tete officiel avec logos */}
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"1rem",gap:"0.8rem"}}>
+                  <img src="/enicarthage-logo.png" alt="ENICarthage" style={{height:"50px",objectFit:"contain"}} />
+                  <div style={{textAlign:"center",flex:1}}>
+                    <p style={{fontSize:"0.55rem",color:"#94a3b8",letterSpacing:"1px",lineHeight:1.4,margin:0}}>
+                      Ministere de l'Enseignement Superieur<br/>Et la Recherche Scientifique
+                    </p>
+                    <p style={{fontSize:"0.65rem",color:"#c9a84c",fontWeight:"700",letterSpacing:"1px",marginTop:"0.2rem",margin:0}}>
+                      Universite de Carthage
+                    </p>
+                    <p style={{fontSize:"0.55rem",color:"#94a3b8",margin:0}}>
+                      Ecole Nationale d'Ingenieurs de Carthage
+                    </p>
+                  </div>
+                  <img src="/uc-logo.jpg" alt="Universite de Carthage" style={{height:"50px",objectFit:"contain"}} />
+                </div>
+                {/* Coins decoratifs */}
+              <div style={{position:"absolute",top:0,left:0,width:"25px",height:"25px",borderTop:"3px solid #c9a84c",borderRight:"3px solid #c9a84c"}}></div>
+              <div style={{position:"absolute",top:0,right:0,width:"25px",height:"25px",borderTop:"3px solid #c9a84c",borderLeft:"3px solid #c9a84c"}}></div>
+              <div style={{position:"absolute",bottom:0,left:0,width:"25px",height:"25px",borderBottom:"3px solid #c9a84c",borderRight:"3px solid #c9a84c"}}></div>
+              <div style={{position:"absolute",bottom:0,right:0,width:"25px",height:"25px",borderBottom:"3px solid #c9a84c",borderLeft:"3px solid #c9a84c"}}></div>
+              {/* Badge valide */}
+              <div style={{textAlign:"center", marginBottom:"1.5rem"}}>
+                <div style={{
+                  display:"inline-flex", alignItems:"center", gap:"0.5rem",
+                  background:"rgba(16,185,129,0.15)", border:"1px solid rgba(16,185,129,0.4)",
+                  borderRadius:"999px", padding:"0.4rem 1.2rem", marginBottom:"1rem"
+                }}>
+                  <span style={{fontSize:"1rem"}}>Ã¢Å“â€¦</span>
+                  <span style={{color:"#6ee7b7", fontWeight:"700", fontSize:"0.9rem", letterSpacing:"1px"}}>
+                    CERTIFICAT VALIDE
+                  </span>
+                </div>
+                <div style={{width:"60px",height:"1px",background:"linear-gradient(90deg,transparent,#c9a84c,transparent)",margin:"0 auto 0.8rem"}}></div>
+                <p style={{fontSize:"0.65rem",color:"#c9a84c",letterSpacing:"4px",textTransform:"uppercase"}}>
+                  Republique Tunisienne Ã¢â‚¬â€ Diplome Officiel
+                </p>
+              </div>
+              {/* Contenu principal */}
+              <div style={{display:"flex", gap:"2rem", alignItems:"center", flexWrap:"wrap"}}>
+                <div style={{flex:1, textAlign:"center"}}>
+                  <p style={{color:"#64748b", fontSize:"0.8rem", marginBottom:"0.4rem"}}>Etudiant</p>
+                  <p style={{
+                    fontSize:"1.5rem", fontWeight:"800", color:"#ffffff",
+                    borderBottom:"2px solid #c9a84c", display:"inline-block",
+                    paddingBottom:"0.2rem", marginBottom:"1rem"
+                  }}>
+                    {result.studentName}
+                  </p>
+                  <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.8rem", textAlign:"left", marginBottom:"1rem"}}>
+                    <div style={{background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:"8px", padding:"0.6rem 0.8rem"}}>
+                      <p style={{fontSize:"0.65rem", color:"#64748b", marginBottom:"0.2rem", textTransform:"uppercase", letterSpacing:"0.5px"}}>Diplome</p>
+                      <p style={{fontSize:"0.85rem", color:"#60a5fa", fontWeight:"600"}}>{result.degree}</p>
+                    </div>
+                    <div style={{background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:"8px", padding:"0.6rem 0.8rem"}}>
+                      <p style={{fontSize:"0.65rem", color:"#64748b", marginBottom:"0.2rem", textTransform:"uppercase", letterSpacing:"0.5px"}}>Institution</p>
+                      <p style={{fontSize:"0.85rem", color:"#e2e8f0", fontWeight:"600"}}>{result.institution}</p>
+                    </div>
+                    <div style={{background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:"8px", padding:"0.6rem 0.8rem"}}>
+                      <p style={{fontSize:"0.65rem", color:"#64748b", marginBottom:"0.2rem", textTransform:"uppercase", letterSpacing:"0.5px"}}>Date</p>
+                      <p style={{fontSize:"0.85rem", color:"#e2e8f0", fontWeight:"600"}}>{new Date(result.issueDate).toLocaleDateString("fr-FR")}</p>
+                    </div>
+                    <div style={{background:"rgba(201,168,76,0.1)", border:"1px solid rgba(201,168,76,0.3)", borderRadius:"8px", padding:"0.6rem 0.8rem"}}>
+                      <p style={{fontSize:"0.65rem", color:"#64748b", marginBottom:"0.2rem", textTransform:"uppercase", letterSpacing:"0.5px"}}>Mention</p>
+                      <p style={{fontSize:"0.85rem", color:"#c9a84c", fontWeight:"700"}}>{result.mention || "N/A"}</p>
+                    </div>
+                  </div>
+                  {result.txHash && (
+                    <a href={"https://sepolia.etherscan.io/tx/" + result.txHash}
+                      target="_blank" rel="noopener noreferrer"
+                      style={{
+                        display:"inline-flex", alignItems:"center", gap:"0.4rem",
+                        background:"rgba(201,168,76,0.1)", border:"1px solid rgba(201,168,76,0.3)",
+                        borderRadius:"6px", padding:"0.4rem 0.8rem",
+                        color:"#c9a84c", fontSize:"0.75rem", textDecoration:"none"
+                      }}>
+                      Ã¢â€ºâ€œ Verifier sur Etherscan
+                    </a>
+                  )}
+                </div>
+                {/* QR Code */}
+                <div style={{textAlign:"center"}}>
+                  <div style={{background:"white", padding:"10px", borderRadius:"10px", display:"inline-block", boxShadow:"0 0 20px rgba(201,168,76,0.3)"}}>
+                    <QRCodeSVG value={verifyUrl} size={110} />
+                  </div>
+                  <p style={{fontSize:"0.65rem", color:"#64748b", marginTop:"0.5rem"}}>Scanner pour verifier</p>
+                </div>
+              </div>
+              {/* Hash */}
+              <div style={{borderTop:"1px solid rgba(201,168,76,0.2)", marginTop:"1rem", paddingTop:"0.8rem"}}>
+                <p style={{fontSize:"0.65rem", color:"#475569", marginBottom:"0.2rem"}}>Hash blockchain :</p>
+                <p style={{fontFamily:"monospace", fontSize:"0.62rem", color:"#475569", wordBreak:"break-all"}}>
+                  {hash}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        {result && !result.exists && (
+          <div className="alert alert-error fade-in" style={{marginTop:"1.5rem"}}>
+            <p className="alert-title">Certificat introuvable</p>
+            <p>Ce hash ne correspond a aucun certificat enregistre.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

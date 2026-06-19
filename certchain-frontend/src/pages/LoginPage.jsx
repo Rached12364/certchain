@@ -13,7 +13,7 @@ export default function LoginPage() {
       const res = await axios.post("http://localhost:8080/api/auth/login", form);
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("username", res.data.username);
-      navigate("/");
+      navigate("/dashboard");
     } catch {
       setError("Identifiants incorrects");
     }
